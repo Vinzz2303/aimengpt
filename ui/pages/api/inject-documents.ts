@@ -3,10 +3,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { ChromaClient, TransformersEmbeddingFunction } from 'chromadb';
 import { IncomingForm } from 'formidable';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+
+import {
+  SCIENTIFIC_TEXT_SEPARATORS,
+  buildScientificMetadata,
+  type ScientificDocument,
+} from '@/utils/server/scientific-rag';
 
 export const config = {
   api: {
@@ -37,13 +43,11 @@ export default async function handler(
 
       const originalDocs = await loader.load();
 
-      console.log(JSON.stringify(originalDocs));
-
-
       const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 500,
-        chunkOverlap: 100,
-      });      
+        chunkSize: 900,
+        chunkOverlap: 180,
+        separators: SCIENTIFIC_TEXT_SEPARATORS,
+      });
 
       const docs = await splitter.splitDocuments(originalDocs);
  
@@ -75,27 +79,20 @@ export default async function handler(
   }
 }
 
-function processDocuments(docs: any) {
-  const ids = [];
+function processDocuments(docs: ScientificDocument[]) {
+  const ids: string[] = [];
   const metadatas = [];
-  const documentContents = [];
+  const documentContents: string[] = [];
 
-  for (const document of docs) {
+  for (let index = 0; index < docs.length; index += 1) {
+    const document = docs[index];
     // Generate an ID for each document, or use some existing unique identifier
     const id = uuidv4();
     ids.push(id);
 
-    const fallbackTitle = path.basename(document.metadata.source);
-    const titleFromMetadata = document.metadata.pdf.info.Title;
+    const fallbackTitle = path.basename(document.metadata.source ?? 'document.pdf');
 
-    const title = titleFromMetadata && titleFromMetadata.length > 0 ? titleFromMetadata : fallbackTitle;
-
-  
-    const metadata = {
-      title: title,
-      page: document.metadata.loc.pageNumber, // Define this function to extract chapter info
-      source: document.metadata.source, // Define this function to extract verse info
-    };
+    const metadata = buildScientificMetadata(document, fallbackTitle, index);
     metadatas.push(metadata);
 
     // Add the page content to the documents array

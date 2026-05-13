@@ -1,8 +1,9 @@
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_TEMPERATURE } from '@/utils/app/const';
 import { OpenAIError, OpenAIStream } from '@/utils/server';
-import { codeBlock, oneLine } from 'common-tags'
+import { codeBlock, oneLine } from 'common-tags';
 
 import { ChatBody, Message } from '@/types/chat';
+import { formatRetrievedDocument } from '@/utils/server/scientific-rag';
 
 // @ts-expect-error
 import wasm from '../../node_modules/@dqbd/tiktoken/lite/tiktoken_bg.wasm?module';
@@ -17,11 +18,10 @@ export const config = {
 // Function to fetch and format documents
 async function fetchAndFormatDocuments(lastMessageContent: string) {
   try {
-    console.log("fetching documents")
     const response = await fetch('http://localhost:3000/api/fetch-documents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: lastMessageContent }),
+      body: JSON.stringify({ input: lastMessageContent, nResults: 6 }),
     });
     
     if (!response.ok) {
@@ -30,16 +30,19 @@ async function fetchAndFormatDocuments(lastMessageContent: string) {
 
     const data = await response.json();
     const result = data.metadatas[0].map((metadata: any, index: number) => {
-      return `Source ${index + 1}) Title: ${metadata.title}, Page: ${metadata.page}, Content: ${data.documents[0][index]}\n`;
-    }).join('');
-
-    console.log(result);
+      return formatRetrievedDocument({
+        content: data.documents[0][index],
+        metadata,
+        distance: data.distances?.[0]?.[index],
+        index,
+      });
+    }).join('\n\n---\n\n');
 
     return result;
 
   } catch (error) {
     console.error('Error fetching and formatting documents:', error);
-    throw error; // You may want to throw a more specific error object here
+    throw error;
   }
 }
 
@@ -64,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
     ${oneLine`
       You are a very enthusiastic AI assistant  who loves
       to help people! Given the following information from
-      relevant documentation, answer the user's question using
+      relevant scientific documentation, answer the user's question using
       only that information, outputted in markdown format.
     `}
 
@@ -75,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
     `}
     
     ${oneLine`
-      Always include citations from the documentation.
+      Every factual claim must include citation keys from the documentation.
     `}
   `;
 
@@ -100,9 +103,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     encoding.free();
 
-    console.log(model, promptToSend, temperatureToUse, key, messagesToSend);
-
-  
   messagesToSend = [
       {
         role: "user",
@@ -120,6 +120,14 @@ const handler = async (req: Request): Promise<Response> => {
           `}
           ${oneLine`
             - Do not make up answers that are not provided in the documentation.
+          `}
+          ${oneLine`
+            - Cite sources using the exact citation keys shown in square brackets,
+            for example [paper-title:p3:c2].
+          `}
+          ${oneLine`
+            - Prefer sources with lower retrieval distance when multiple sources
+            contain similar information.
           `}
           ${oneLine`
             - If you are unsure and the answer is not explicitly written
