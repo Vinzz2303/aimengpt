@@ -21,7 +21,7 @@ describe('scientific-rag helpers', () => {
       buildCitationKey({
         title: 'Scientific RAG for Papers!',
         page: 4,
-        chunkIndex: 2,
+        pageChunkIndex: 2,
       }),
     ).toBe('scientific-rag-for-papers:p4:c3');
   });
@@ -45,6 +45,28 @@ describe('scientific-rag helpers', () => {
       page: 7,
       section: 'results',
       citationKey: 'paper-pdf:p7:c1',
+    });
+  });
+
+  it('can build page-local citation keys when global chunk order differs', () => {
+    const metadata = buildScientificMetadata(
+      {
+        pageContent: 'Discussion\nThe citation key should be local to a page.',
+        metadata: {
+          loc: { pageNumber: 9 },
+          pdf: { info: { Title: 'Long Paper' } },
+          source: '/tmp/long-paper.pdf',
+        },
+      },
+      'long-paper.pdf',
+      14,
+      1,
+    );
+
+    expect(metadata).toMatchObject({
+      chunkIndex: 14,
+      pageChunkIndex: 1,
+      citationKey: 'long-paper:p9:c2',
     });
   });
 

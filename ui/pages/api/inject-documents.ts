@@ -83,6 +83,7 @@ function processDocuments(docs: ScientificDocument[]) {
   const ids: string[] = [];
   const metadatas = [];
   const documentContents: string[] = [];
+  const pageChunkCounts = new Map<string, number>();
 
   for (let index = 0; index < docs.length; index += 1) {
     const document = docs[index];
@@ -91,8 +92,17 @@ function processDocuments(docs: ScientificDocument[]) {
     ids.push(id);
 
     const fallbackTitle = path.basename(document.metadata.source ?? 'document.pdf');
+    const page = document.metadata.loc?.pageNumber ?? 'unknown';
+    const pageKey = `${document.metadata.source ?? fallbackTitle}:${page}`;
+    const pageChunkIndex = pageChunkCounts.get(pageKey) ?? 0;
+    pageChunkCounts.set(pageKey, pageChunkIndex + 1);
 
-    const metadata = buildScientificMetadata(document, fallbackTitle, index);
+    const metadata = buildScientificMetadata(
+      document,
+      fallbackTitle,
+      index,
+      pageChunkIndex,
+    );
     metadatas.push(metadata);
 
     // Add the page content to the documents array

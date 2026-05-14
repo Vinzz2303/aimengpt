@@ -20,6 +20,7 @@ export type ScientificChunkMetadata = {
   source: string;
   section: string;
   chunkIndex: number;
+  pageChunkIndex: number;
   citationKey: string;
 };
 
@@ -30,7 +31,10 @@ const SCIENTIFIC_SECTIONS = [
   'methods',
   'methodology',
   'materials and methods',
+  'experimental setup',
+  'experiments',
   'results',
+  'evaluation',
   'discussion',
   'limitations',
   'conclusion',
@@ -45,8 +49,15 @@ export const SCIENTIFIC_TEXT_SEPARATORS = [
   '\nMethods',
   '\nMETHODS',
   '\nMaterials and Methods',
+  '\nMATERIALS AND METHODS',
+  '\nExperimental Setup',
+  '\nEXPERIMENTAL SETUP',
+  '\nExperiments',
+  '\nEXPERIMENTS',
   '\nResults',
   '\nRESULTS',
+  '\nEvaluation',
+  '\nEVALUATION',
   '\nDiscussion',
   '\nDISCUSSION',
   '\nConclusion',
@@ -90,11 +101,11 @@ export const detectScientificSection = (content: string) => {
 export const buildCitationKey = ({
   title,
   page,
-  chunkIndex,
+  pageChunkIndex,
 }: {
   title: string;
   page: number | string;
-  chunkIndex: number;
+  pageChunkIndex: number;
 }) => {
   const slug = title
     .toLowerCase()
@@ -102,13 +113,14 @@ export const buildCitationKey = ({
     .replace(/(^-|-$)/g, '')
     .slice(0, 40);
 
-  return `${slug || 'document'}:p${page}:c${chunkIndex + 1}`;
+  return `${slug || 'document'}:p${page}:c${pageChunkIndex + 1}`;
 };
 
 export const buildScientificMetadata = (
   document: ScientificDocument,
   fallbackTitle: string,
   chunkIndex: number,
+  pageChunkIndex = chunkIndex,
 ): ScientificChunkMetadata => {
   const title = normalizeTitle(document.metadata.pdf?.info?.Title, fallbackTitle);
   const page = document.metadata.loc?.pageNumber ?? 'unknown';
@@ -120,7 +132,8 @@ export const buildScientificMetadata = (
     source: document.metadata.source ?? fallbackTitle,
     section,
     chunkIndex,
-    citationKey: buildCitationKey({ title, page, chunkIndex }),
+    pageChunkIndex,
+    citationKey: buildCitationKey({ title, page, pageChunkIndex }),
   };
 };
 
@@ -138,6 +151,7 @@ export const formatRetrievedDocument = ({
   const citationKey = metadata.citationKey ?? `source-${index + 1}`;
   const page = metadata.page ?? 'unknown';
   const section = metadata.section ?? 'body';
+  const pageChunkIndex = metadata.pageChunkIndex;
   const scoreLine =
     typeof distance === 'number' ? `Distance: ${distance.toFixed(4)}\n` : '';
 
@@ -146,6 +160,9 @@ export const formatRetrievedDocument = ({
     `Title: ${metadata.title ?? 'Untitled'}`,
     `Page: ${page}`,
     `Section: ${section}`,
+    typeof pageChunkIndex === 'number'
+      ? `Page chunk: ${pageChunkIndex + 1}`
+      : '',
     scoreLine.trim(),
     `Content: ${content}`,
   ]

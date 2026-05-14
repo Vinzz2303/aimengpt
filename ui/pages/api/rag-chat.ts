@@ -16,9 +16,12 @@ export const config = {
 };
 
 // Function to fetch and format documents
-async function fetchAndFormatDocuments(lastMessageContent: string) {
+async function fetchAndFormatDocuments(
+  baseUrl: string,
+  lastMessageContent: string,
+) {
   try {
-    const response = await fetch('http://localhost:3000/api/fetch-documents', {
+    const response = await fetch(`${baseUrl}/api/fetch-documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input: lastMessageContent, nResults: 6 }),
@@ -88,7 +91,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const lastMessage = messages[messages.length - 1];
 
-    const relevantDocuments = await fetchAndFormatDocuments(lastMessage.content);
+    const baseUrl = new URL(req.url).origin;
+    const relevantDocuments = await fetchAndFormatDocuments(
+      baseUrl,
+      lastMessage.content,
+    );
     
     let temperatureToUse = temperature;
     if (temperatureToUse == null) {

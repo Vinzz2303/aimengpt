@@ -3,12 +3,23 @@ import { ChromaClient, TransformersEmbeddingFunction } from 'chromadb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    if (req.method !== 'POST') {
+      return res.status(405).end();
+    }
+
     const client = new ChromaClient({
       path: process.env.CHROMA_PATH || 'http://chroma-server:8000',
     });
 
-    const query = req.body.input;
-    const nResults = Math.min(Number(req.body.nResults ?? 6), 10);
+    const query = typeof req.body.input === 'string' ? req.body.input.trim() : '';
+    const requestedResults = Number(req.body.nResults ?? 6);
+    const nResults = Number.isFinite(requestedResults)
+      ? Math.min(Math.max(Math.trunc(requestedResults), 1), 10)
+      : 6;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Missing retrieval query' });
+    }
 
     const embedder = new TransformersEmbeddingFunction();
 
