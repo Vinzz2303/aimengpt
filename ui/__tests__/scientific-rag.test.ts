@@ -14,6 +14,9 @@ describe('scientific-rag helpers', () => {
     expect(detectScientificSection('METHODS\nWe used a benchmark.')).toBe(
       'methods',
     );
+    expect(
+      detectScientificSection('Materials and Methods\nWe collected samples.'),
+    ).toBe('materials and methods');
   });
 
   it('builds stable citation keys', () => {
