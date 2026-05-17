@@ -169,3 +169,48 @@ export const formatRetrievedDocument = ({
     .filter(Boolean)
     .join('\n');
 };
+
+export const formatRetrievedDocuments = (data: {
+  documents?: unknown;
+  metadatas?: unknown;
+  distances?: unknown;
+}) => {
+  const documents = Array.isArray(data.documents)
+    ? (data.documents[0] as unknown)
+    : undefined;
+  const metadatas = Array.isArray(data.metadatas)
+    ? (data.metadatas[0] as unknown)
+    : undefined;
+  const distances = Array.isArray(data.distances)
+    ? (data.distances[0] as unknown)
+    : undefined;
+
+  if (!Array.isArray(documents) || documents.length === 0) {
+    return '';
+  }
+
+  return documents
+    .map((content, index) => {
+      if (typeof content !== 'string' || content.trim().length === 0) {
+        return '';
+      }
+
+      const metadata =
+        Array.isArray(metadatas) && typeof metadatas[index] === 'object'
+          ? (metadatas[index] as Partial<ScientificChunkMetadata>)
+          : {};
+      const distance =
+        Array.isArray(distances) && typeof distances[index] === 'number'
+          ? distances[index]
+          : undefined;
+
+      return formatRetrievedDocument({
+        content,
+        metadata,
+        distance,
+        index,
+      });
+    })
+    .filter(Boolean)
+    .join('\n\n---\n\n');
+};

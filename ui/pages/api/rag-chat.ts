@@ -3,7 +3,7 @@ import { OpenAIError, OpenAIStream } from '@/utils/server';
 import { codeBlock, oneLine } from 'common-tags';
 
 import { ChatBody, Message } from '@/types/chat';
-import { formatRetrievedDocument } from '@/utils/server/scientific-rag';
+import { formatRetrievedDocuments } from '@/utils/server/scientific-rag';
 
 // @ts-expect-error
 import wasm from '../../node_modules/@dqbd/tiktoken/lite/tiktoken_bg.wasm?module';
@@ -32,16 +32,9 @@ async function fetchAndFormatDocuments(
     }
 
     const data = await response.json();
-    const result = data.metadatas[0].map((metadata: any, index: number) => {
-      return formatRetrievedDocument({
-        content: data.documents[0][index],
-        metadata,
-        distance: data.distances?.[0]?.[index],
-        index,
-      });
-    }).join('\n\n---\n\n');
+    const result = formatRetrievedDocuments(data);
 
-    return result;
+    return result || 'No relevant documents were retrieved.';
 
   } catch (error) {
     console.error('Error fetching and formatting documents:', error);

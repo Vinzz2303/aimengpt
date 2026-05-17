@@ -39,7 +39,14 @@ export default async function handler(
         path: process.env.CHROMA_PATH || 'http://chroma-server:8000',
       });
 
-      const loader = new PDFLoader(files.pdf[0].filepath);
+      const pdf = files.pdf;
+      const pdfFile = Array.isArray(pdf) ? pdf[0] : pdf;
+
+      if (!pdfFile || typeof pdfFile.filepath !== 'string') {
+        return res.status(400).json({ error: 'Missing PDF upload' });
+      }
+
+      const loader = new PDFLoader(pdfFile.filepath);
 
       const originalDocs = await loader.load();
 
@@ -50,7 +57,7 @@ export default async function handler(
       });
 
       const docs = await splitter.splitDocuments(originalDocs);
- 
+
       // Process the documents and perform other logic
       const { ids, metadatas, documentContents } = processDocuments(docs);
 

@@ -3,6 +3,7 @@ import {
   buildScientificMetadata,
   detectScientificSection,
   formatRetrievedDocument,
+  formatRetrievedDocuments,
 } from '@/utils/server/scientific-rag';
 import { describe, expect, it } from 'vitest';
 
@@ -87,5 +88,18 @@ describe('scientific-rag helpers', () => {
         index: 0,
       }),
     ).toContain('Source 1 [paper:p2:c1]');
+  });
+
+  it('formats Chroma retrieval results defensively', () => {
+    expect(
+      formatRetrievedDocuments({
+        documents: [['Document context.']],
+        metadatas: [[{ citationKey: 'paper:p1:c1', title: 'Paper', page: 1 }]],
+        distances: [[0.42]],
+      }),
+    ).toContain('Source 1 [paper:p1:c1]');
+
+    expect(formatRetrievedDocuments({ documents: [[]] })).toBe('');
+    expect(formatRetrievedDocuments({ documents: undefined })).toBe('');
   });
 });
